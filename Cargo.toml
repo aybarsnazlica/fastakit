@@ -1,0 +1,12 @@
+[package]
+name = "fastakit"
+authors = ["Aybars Nazlica", "<aybarsnazlica@gmail.com>"]
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sha2 = "0.10"
+clap = { version = "4.1", features = ["derive"] }
+rayon = "1.7"
+hex = "0.4"
+csv = "1.1"
