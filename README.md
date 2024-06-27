@@ -1,0 +1,2 @@
+# fastakit
+Fasta transformation toolkit.
