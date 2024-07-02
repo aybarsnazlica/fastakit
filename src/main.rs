@@ -15,8 +15,6 @@ enum SubCommands {
         output: String,
         #[clap(short = 'j', long = "json", value_name = "JSON", required = false)]
         json: Option<String>,
-        #[clap(short = 't', long = "threads", value_name = "N", default_value = "1")]
-        threads: usize,
     },
     CsvToFasta {
         #[clap(short = 'i', long = "input", value_name = "INPUT")]
@@ -51,9 +49,8 @@ fn main() -> Result<(), Box<dyn Error>> {
             input,
             output,
             json,
-            threads,
         } => {
-            hash::run(input, output, json, threads);
+            hash::run(input, output, json);
         }
         SubCommands::CsvToFasta {
             input,

@@ -1,19 +1,12 @@
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};
-use std::sync::Mutex;
 
 use hex::encode;
-use rayon::prelude::*;
 use serde_json::json;
 use sha2::{Digest, Sha256};
 
-pub fn run(input: String, output: String, output_json: Option<String>, num_cores: usize) {
-    rayon::ThreadPoolBuilder::new()
-        .num_threads(num_cores)
-        .build_global()
-        .unwrap();
-
+pub fn run(input: String, output: String, output_json: Option<String>) {
     let reader = open_input_file(&input);
     let writer = open_output_file(&output);
 
@@ -63,23 +56,17 @@ fn read_fasta_records(reader: BufReader<File>) -> Vec<(String, String)> {
 }
 
 fn process_records(records: Vec<(String, String)>) -> (Vec<String>, HashMap<String, String>) {
-    let header_mapping = Mutex::new(HashMap::new());
+    let mut header_mapping = HashMap::new();
     let processed_records: Vec<String> = records
-        .par_iter()
+        .iter()
         .map(|(header, sequence)| {
             let original_header = header[1..].to_string(); // Remove '>' from header
             let header_hash = hash_header(&original_header);
-            {
-                let mut header_mapping = header_mapping.lock().unwrap();
-                header_mapping.insert(original_header.clone(), header_hash.clone());
-            }
+            header_mapping.insert(original_header.clone(), header_hash.clone());
             format!(">{}\n{}\n", header_hash, sequence)
         })
         .collect();
-    (
-        processed_records,
-        Mutex::into_inner(header_mapping).unwrap(),
-    )
+    (processed_records, header_mapping)
 }
 
 fn write_processed_records(mut writer: BufWriter<File>, records: Vec<String>) {
