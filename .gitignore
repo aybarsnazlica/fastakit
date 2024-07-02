@@ -17,5 +17,6 @@ Cargo.lock
 
 /target
 
-# IntelliJ
-.idea/
+# Output files
+*.fasta
+*.json
