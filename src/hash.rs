@@ -1,11 +1,14 @@
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::sync::Mutex;
 
 use hex::encode;
 use rayon::prelude::*;
+use serde_json::json;
 use sha2::{Digest, Sha256};
 
-pub fn run(input: String, output: String, num_cores: usize) {
+pub fn run(input: String, output: String, output_json: Option<String>, num_cores: usize) {
     rayon::ThreadPoolBuilder::new()
         .num_threads(num_cores)
         .build_global()
@@ -15,9 +18,13 @@ pub fn run(input: String, output: String, num_cores: usize) {
     let writer = open_output_file(&output);
 
     let records = read_fasta_records(reader);
-    let processed_records = process_records(records);
+    let (processed_records, header_mapping) = process_records(records);
 
     write_processed_records(writer, processed_records);
+
+    if let Some(json_path) = output_json {
+        write_header_mapping(&json_path, header_mapping);
+    }
 }
 
 fn open_input_file(path: &str) -> BufReader<File> {
@@ -55,14 +62,21 @@ fn read_fasta_records(reader: BufReader<File>) -> Vec<(String, String)> {
     records
 }
 
-fn process_records(records: Vec<(String, String)>) -> Vec<String> {
-    records
+fn process_records(records: Vec<(String, String)>) -> (Vec<String>, HashMap<String, String>) {
+    let header_mapping = Mutex::new(HashMap::new());
+    let processed_records: Vec<String> = records
         .par_iter()
         .map(|(header, sequence)| {
-            let header_hash = hash_header(&header[1..]); // Remove '>' from header
+            let original_header = header[1..].to_string(); // Remove '>' from header
+            let header_hash = hash_header(&original_header);
+            {
+                let mut header_mapping = header_mapping.lock().unwrap();
+                header_mapping.insert(original_header.clone(), header_hash.clone());
+            }
             format!(">{}\n{}\n", header_hash, sequence)
         })
-        .collect()
+        .collect();
+    (processed_records, Mutex::into_inner(header_mapping).unwrap())
 }
 
 fn write_processed_records(mut writer: BufWriter<File>, records: Vec<String>) {
@@ -71,6 +85,13 @@ fn write_processed_records(mut writer: BufWriter<File>, records: Vec<String>) {
             .write_all(record.as_bytes())
             .expect("Failed to write to output file");
     }
+}
+
+fn write_header_mapping(path: &str, header_mapping: HashMap<String, String>) {
+    let json = json!(header_mapping);
+    let mut file = File::create(path).expect("Failed to create JSON output file");
+    file.write_all(json.to_string().as_bytes())
+        .expect("Failed to write JSON to output file");
 }
 
 fn hash_header(header: &str) -> String {
