@@ -76,7 +76,10 @@ fn process_records(records: Vec<(String, String)>) -> (Vec<String>, HashMap<Stri
             format!(">{}\n{}\n", header_hash, sequence)
         })
         .collect();
-    (processed_records, Mutex::into_inner(header_mapping).unwrap())
+    (
+        processed_records,
+        Mutex::into_inner(header_mapping).unwrap(),
+    )
 }
 
 fn write_processed_records(mut writer: BufWriter<File>, records: Vec<String>) {
