@@ -13,7 +13,7 @@ enum SubCommands {
         input: String,
         #[clap(short = 'o', long = "output", value_name = "OUTPUT")]
         output: String,
-        #[clap(short = 'j', long = "json", value_name = "OUTPUT", required = false)]
+        #[clap(short = 'j', long = "json", value_name = "JSON", required = false)]
         json: Option<String>,
         #[clap(short = 't', long = "threads", value_name = "N", default_value = "1")]
         threads: usize,
