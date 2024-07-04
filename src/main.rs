@@ -13,7 +13,7 @@ enum SubCommands {
         input: String,
         #[clap(short = 'o', long = "output", value_name = "OUTPUT")]
         output: String,
-        #[clap(short = 'j', long = "json", value_name = "JSON", required = false)]
+        #[clap(short = 'c', long = "csv", value_name = "CSV", required = false)]
         json: Option<String>,
     },
     CsvToFasta {

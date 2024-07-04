@@ -3,7 +3,6 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 
 use hex::encode;
-use serde_json::json;
 use sha2::{Digest, Sha256};
 
 pub fn run(input: String, output: String, output_json: Option<String>) {
@@ -78,10 +77,19 @@ fn write_processed_records(mut writer: BufWriter<File>, records: Vec<String>) {
 }
 
 fn write_header_mapping(path: &str, header_mapping: HashMap<String, String>) {
-    let json = json!(header_mapping);
-    let mut file = File::create(path).expect("Failed to create JSON output file");
-    file.write_all(json.to_string().as_bytes())
-        .expect("Failed to write JSON to output file");
+    let mut wtr = csv::Writer::from_path(path).expect("Failed to create CSV output file");
+
+    // Write the header row
+    wtr.write_record(&["header_original", "header_hashed"])
+        .expect("Failed to write header row to CSV");
+
+    // Write the header mappings
+    for (original, hashed) in header_mapping {
+        wtr.write_record(&[original, hashed])
+            .expect("Failed to write record to CSV");
+    }
+
+    wtr.flush().expect("Failed to flush CSV writer");
 }
 
 fn hash_header(header: &str) -> String {

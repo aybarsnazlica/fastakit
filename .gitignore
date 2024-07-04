@@ -19,5 +19,4 @@ Cargo.lock
 
 # Output files
 *.fasta
-*.json
 *.csv
