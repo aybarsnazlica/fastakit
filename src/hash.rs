@@ -14,11 +14,11 @@ pub fn run(
     output_csv: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let reader = open_input_file(&input)?;
-    let mut reader = BufReader::new(reader);
     let mut buffer = String::new();
 
     // Read the first line to determine the file type
-    reader.read_line(&mut buffer)?;
+    let mut peekable_reader = reader.take(1);
+    peekable_reader.read_to_string(&mut buffer)?;
 
     let file_type = if buffer.starts_with('>') {
         "FASTA"
@@ -29,32 +29,32 @@ pub fn run(
     };
 
     // Rewind the reader to the beginning of the file
-    let reader = BufReader::new(open_input_file(&input)?);
+    let reader = open_input_file(&input)?;
 
     let writer = open_output_file(&output)?;
 
     if file_type == "FASTA" {
-        let records = read_fasta_records(reader);
+        let records = read_fasta_records(reader)?;
         let (processed_records, header_mapping) = process_fasta_records(records);
-        write_processed_records(writer, processed_records);
+        write_processed_records(writer, processed_records)?;
 
         if let Some(csv_path) = output_csv {
-            write_header_mapping(&csv_path, header_mapping);
+            write_header_mapping(&csv_path, header_mapping)?;
         }
     } else {
-        let records = read_fastq_records(reader);
+        let records = read_fastq_records(reader)?;
         let (processed_records, header_mapping) = process_fastq_records(records);
-        write_processed_records(writer, processed_records);
+        write_processed_records(writer, processed_records)?;
 
         if let Some(csv_path) = output_csv {
-            write_header_mapping(&csv_path, header_mapping);
+            write_header_mapping(&csv_path, header_mapping)?;
         }
     }
 
     Ok(())
 }
 
-fn open_input_file(path: &str) -> Result<Box<dyn Read>, Box<dyn std::error::Error>> {
+fn open_input_file(path: &str) -> Result<Box<dyn BufRead>, Box<dyn std::error::Error>> {
     let file = File::open(path)?;
     let mut buf = [0; 2];
     let mut reader = BufReader::new(&file);
@@ -62,9 +62,11 @@ fn open_input_file(path: &str) -> Result<Box<dyn Read>, Box<dyn std::error::Erro
 
     // Check if the file is gzipped
     if buf == [0x1f, 0x8b] {
-        Ok(Box::new(GzDecoder::new(file)))
+        let file = File::open(path)?;
+        Ok(Box::new(BufReader::new(GzDecoder::new(file))))
     } else {
-        Ok(Box::new(File::open(path)?))
+        let file = File::open(path)?;
+        Ok(Box::new(BufReader::new(file)))
     }
 }
 
@@ -74,13 +76,16 @@ fn open_output_file(path: &str) -> Result<BufWriter<GzEncoder<File>>, Box<dyn st
     Ok(BufWriter::new(encoder))
 }
 
-fn read_fasta_records(reader: BufReader<Box<dyn Read>>) -> Vec<(String, String)> {
+fn read_fasta_records<R: BufRead>(
+    reader: R,
+) -> Result<Vec<(String, String)>, Box<dyn std::error::Error>> {
     let mut records = Vec::new();
     let mut lines = reader.lines();
     let mut current_header = String::new();
     let mut current_sequence = String::new();
 
-    while let Some(Ok(line)) = lines.next() {
+    while let Some(line) = lines.next() {
+        let line = line?;
         if line.starts_with('>') {
             if !current_header.is_empty() {
                 records.push((current_header.clone(), current_sequence.clone()));
@@ -96,22 +101,28 @@ fn read_fasta_records(reader: BufReader<Box<dyn Read>>) -> Vec<(String, String)>
         records.push((current_header, current_sequence));
     }
 
-    records
+    Ok(records)
 }
 
-fn read_fastq_records(reader: BufReader<Box<dyn Read>>) -> Vec<(String, String, String)> {
+fn read_fastq_records<R: BufRead>(
+    reader: R,
+) -> Result<Vec<(String, String, String)>, Box<dyn std::error::Error>> {
     let mut records = Vec::new();
     let mut lines = reader.lines();
-    while let (Some(Ok(header)), Some(Ok(sequence)), Some(Ok(plus)), Some(Ok(quality))) =
+    while let (Some(header), Some(sequence), Some(plus), Some(quality)) =
         (lines.next(), lines.next(), lines.next(), lines.next())
     {
+        let header = header?;
+        let sequence = sequence?;
+        let plus = plus?;
+        let quality = quality?;
         if header.starts_with('@') && plus.starts_with('+') {
             records.push((header, sequence, quality));
         } else {
-            panic!("Malformed FASTQ file");
+            return Err("Malformed FASTQ file".into());
         }
     }
-    records
+    Ok(records)
 }
 
 fn process_fasta_records(records: Vec<(String, String)>) -> (Vec<String>, HashMap<String, String>) {
@@ -144,28 +155,32 @@ fn process_fastq_records(
     (processed_records, header_mapping)
 }
 
-fn write_processed_records(mut writer: BufWriter<GzEncoder<File>>, records: Vec<String>) {
+fn write_processed_records<W: Write>(
+    mut writer: W,
+    records: Vec<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
     for record in records {
-        writer
-            .write_all(record.as_bytes())
-            .expect("Failed to write to output file");
+        writer.write_all(record.as_bytes())?;
     }
+    Ok(())
 }
 
-fn write_header_mapping(path: &str, header_mapping: HashMap<String, String>) {
-    let mut wtr = csv::Writer::from_path(path).expect("Failed to create CSV output file");
+fn write_header_mapping(
+    path: &str,
+    header_mapping: HashMap<String, String>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut wtr = csv::Writer::from_path(path)?;
 
     // Write the header row
-    wtr.write_record(&["header_original", "header_hashed"])
-        .expect("Failed to write header row to CSV");
+    wtr.write_record(&["header_original", "header_hashed"])?;
 
     // Write the header mappings
     for (original, hashed) in header_mapping {
-        wtr.write_record(&[original, hashed])
-            .expect("Failed to write record to CSV");
+        wtr.write_record(&[original, hashed])?;
     }
 
-    wtr.flush().expect("Failed to flush CSV writer");
+    wtr.flush()?;
+    Ok(())
 }
 
 fn hash_header(header: &str) -> String {
