@@ -1,6 +1,5 @@
-use std::error::Error;
-
 use clap::{Parser, Subcommand};
+use std::error::Error;
 
 mod csv_to_fasta;
 mod fasta_to_csv;
@@ -14,7 +13,7 @@ enum SubCommands {
         #[clap(short = 'o', long = "output", value_name = "OUTPUT")]
         output: String,
         #[clap(short = 'c', long = "csv", value_name = "CSV", required = false)]
-        json: Option<String>,
+        csv: Option<String>,
     },
     CsvToFasta {
         #[clap(short = 'i', long = "input", value_name = "INPUT")]
@@ -45,12 +44,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     let args = Cli::parse();
 
     match args.command {
-        SubCommands::Hash {
-            input,
-            output,
-            json,
-        } => {
-            hash::run(input, output, json);
+        SubCommands::Hash { input, output, csv } => {
+            if let Err(e) = hash::run(input, output, csv) {
+                eprintln!("Error: {}", e);
+                std::process::exit(1);
+            }
         }
         SubCommands::CsvToFasta {
             input,

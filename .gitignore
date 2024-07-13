@@ -20,3 +20,5 @@ Cargo.lock
 # Output files
 *.fasta
 *.csv
+*.fasta.gz
+*.fastq.gz
