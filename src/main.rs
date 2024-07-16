@@ -14,6 +14,8 @@ enum SubCommands {
         output: String,
         #[clap(short = 'c', long = "csv", value_name = "CSV", required = false)]
         csv: Option<String>,
+        #[clap(long = "gzip")]
+        gzip: bool,
     },
     CsvToFasta {
         #[clap(short = 'i', long = "input", value_name = "INPUT")]
@@ -44,8 +46,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     let args = Cli::parse();
 
     match args.command {
-        SubCommands::Hash { input, output, csv } => {
-            if let Err(e) = hash::run(input, output, csv) {
+        SubCommands::Hash {
+            input,
+            output,
+            csv,
+            gzip,
+        } => {
+            if let Err(e) = hash::run(input, output, csv, gzip) {
                 eprintln!("Error: {}", e);
                 std::process::exit(1);
             }

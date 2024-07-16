@@ -12,6 +12,7 @@ pub fn run(
     input: String,
     output: String,
     output_csv: Option<String>,
+    gzip: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let reader = open_input_file(&input)?;
     let mut buffer = String::new();
@@ -31,7 +32,7 @@ pub fn run(
     // Rewind the reader to the beginning of the file
     let reader = open_input_file(&input)?;
 
-    let writer = open_output_file(&output)?;
+    let writer = open_output_file(&output, gzip)?;
 
     if file_type == "FASTA" {
         let records = read_fasta_records(reader)?;
@@ -70,10 +71,14 @@ fn open_input_file(path: &str) -> Result<Box<dyn BufRead>, Box<dyn std::error::E
     }
 }
 
-fn open_output_file(path: &str) -> Result<BufWriter<GzEncoder<File>>, Box<dyn std::error::Error>> {
+fn open_output_file(path: &str, gzip: bool) -> Result<Box<dyn Write>, Box<dyn std::error::Error>> {
     let file = File::create(path)?;
-    let encoder = GzEncoder::new(file, Compression::default());
-    Ok(BufWriter::new(encoder))
+    if gzip {
+        let encoder = GzEncoder::new(file, Compression::default());
+        Ok(Box::new(BufWriter::new(encoder)))
+    } else {
+        Ok(Box::new(BufWriter::new(file)))
+    }
 }
 
 fn read_fasta_records<R: BufRead>(
