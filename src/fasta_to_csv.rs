@@ -1,12 +1,10 @@
-use std::error::Error;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
-
+use crate::gzip_utils::open_input_file;
 use csv::WriterBuilder;
+use std::error::Error;
+use std::io::BufRead;
 
 pub fn run(input: String, output: String) -> Result<(), Box<dyn Error>> {
-    let input_file = File::open(&input)?;
-    let reader = BufReader::new(input_file);
+    let reader = open_input_file(&input)?;
 
     let mut wtr = WriterBuilder::new().has_headers(true).from_path(&output)?;
 

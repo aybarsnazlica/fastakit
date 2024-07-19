@@ -1,8 +1,8 @@
+use crate::gzip_utils::open_input_file;
+use csv::ReaderBuilder;
 use std::error::Error;
 use std::fs::File;
 use std::io::{BufWriter, Write};
-
-use csv::ReaderBuilder;
 
 pub fn run(
     input: String,
@@ -10,7 +10,9 @@ pub fn run(
     sequence: String,
     output: String,
 ) -> Result<(), Box<dyn Error>> {
-    let mut rdr = ReaderBuilder::new().has_headers(true).from_path(&input)?;
+    // Use open_input_file to handle gzipped input
+    let reader = open_input_file(&input)?;
+    let mut rdr = ReaderBuilder::new().has_headers(true).from_reader(reader);
 
     let headers = rdr.headers()?.clone();
     let header_idx = headers

@@ -1,9 +1,9 @@
-use flate2::read::GzDecoder;
+use crate::gzip_utils::open_input_file;
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{BufRead, BufReader, BufWriter, Read, Write};
+use std::io::{BufRead, BufWriter, Read, Write};
 
 use hex::encode;
 use sha2::{Digest, Sha256};
@@ -53,22 +53,6 @@ pub fn run(
     }
 
     Ok(())
-}
-
-fn open_input_file(path: &str) -> Result<Box<dyn BufRead>, Box<dyn std::error::Error>> {
-    let file = File::open(path)?;
-    let mut buf = [0; 2];
-    let mut reader = BufReader::new(&file);
-    reader.read_exact(&mut buf)?;
-
-    // Check if the file is gzipped
-    if buf == [0x1f, 0x8b] {
-        let file = File::open(path)?;
-        Ok(Box::new(BufReader::new(GzDecoder::new(file))))
-    } else {
-        let file = File::open(path)?;
-        Ok(Box::new(BufReader::new(file)))
-    }
 }
 
 fn open_output_file(path: &str, gzip: bool) -> Result<Box<dyn Write>, Box<dyn std::error::Error>> {
