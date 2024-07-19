@@ -3,6 +3,8 @@ use std::error::Error;
 
 mod csv_to_fasta;
 mod fasta_to_csv;
+mod fastq_to_csv;
+mod gzip_utils;
 mod hash;
 
 #[derive(Subcommand)]
@@ -32,6 +34,14 @@ enum SubCommands {
         input: String,
         #[clap(short = 'o', long = "output", value_name = "OUTPUT")]
         output: String,
+    },
+    FastqToCsv {
+        #[clap(short = 'i', long = "input", value_name = "INPUT")]
+        input: String,
+        #[clap(short = 'o', long = "output", value_name = "OUTPUT")]
+        output: String,
+        #[clap(long = "quality")]
+        quality: bool,
     },
 }
 
@@ -67,6 +77,13 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
         SubCommands::FastaToCsv { input, output } => {
             fasta_to_csv::run(input, output)?;
+        }
+        SubCommands::FastqToCsv {
+            input,
+            output,
+            quality,
+        } => {
+            fastq_to_csv::run(input, output, quality)?;
         }
     }
 
